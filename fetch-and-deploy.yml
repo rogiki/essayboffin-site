@@ -1,0 +1,54 @@
+name: Fetch, process images and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  fetch-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: |
+          npm ci || true
+          npm install node-fetch@2 jimp
+      - name: Run fetch-images script
+        run: node fetch-images.js
+      - name: Commit fetched assets if changed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets || true
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "ci: add fetched Gumroad thumbnails and processed logo [automated]"
+            git push origin HEAD:main
+          fi
+      - name: Prepare site for Pages
+        run: |
+          mkdir -p out
+          cp -R index.html assets out/
+      - name: Configure Pages
+        uses: actions/configure-pages@v3
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: out
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v1
