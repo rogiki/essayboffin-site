@@ -1,28 +1,176 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Static Site Prototype</title>
-    <link rel="stylesheet" href="assets/style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EssayBoffin — Learn. Write. Succeed.</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <meta name="description" content="EssayBoffin — premium & free courses, articles and books to help you with academic writing and virtual assistance." />
 </head>
 <body>
-    <header>
-        <h1>Welcome to the Static Site Prototype</h1>
-    </header>
-    <main>
-        <section>
-            <h2>Contact Us</h2>
-            <form id="contact-form">
-                <label for="name">Name:</label>
-                <input type="text" id="name" name="name" required>
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
-                <input type="submit" value="Submit">
-            </form>
-        </section>
-    </main>
-    <script src="assets/main.js"></script>
-    <script src="fetch-images.js"></script>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/">
+        <!-- Local transparent logo (assets/logo.png) -->
+        <img id="site-logo" src="/assets/logo.png" alt="EssayBoffin logo" />
+        <span class="brand-text">EssayBoffin</span>
+      </a>
+
+      <nav class="nav">
+        <a href="#free">Free Courses</a>
+        <a href="#premium">Premium Courses <small>(Recommended)</small></a>
+        <a href="#articles">Articles & Blog</a>
+        <a href="#books">Books</a>
+        <a class="gumroad-tab" href="https://essayboffin.gumroad.com" target="_blank" rel="noopener">Gumroad</a>
+        <div class="dropdown">
+          <button class="dropdown-button" id="assistBtn">Get Virtual Assistance ▾</button>
+          <div class="dropdown-menu" id="assistMenu" aria-hidden="true">
+            <button class="menu-item" data-service="Virtual Assistance">Virtual Assistance</button>
+            <button class="menu-item" data-service="Academic Help">Academic Help</button>
+          </div>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-inner">
+        <div class="hero-content">
+          <h1>Write Smarter. Learn Faster.</h1>
+          <p class="lead">Premium and free courses, articles, and curated books to level up your academic writing and virtual assistance skills.</p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="#premium">Explore Premium</a>
+            <a class="btn btn-ghost" href="#free">Browse Free</a>
+          </div>
+        </div>
+        <div class="hero-3d">
+          <div class="card-3d">
+            <div class="card-3d-inner">
+              <h3>EssayBoffin</h3>
+              <p>Silk modern 3D design with calm non-bright accents.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="premium" class="section container">
+      <h2>Premium Courses <span class="recommended">Recommended</span></h2>
+      <div class="cards">
+        <article class="card">
+          <a class="card-media" href="https://essayboffin.gumroad.com/l/phouc" target="_blank" rel="noopener">
+            <img src="/assets/premium-course.jpg" alt="Premium course thumbnail" />
+          </a>
+          <div class="card-body">
+            <h3>Premium Course — From Gumroad</h3>
+            <p class="muted">Get the premium course (click to visit Gumroad for details and purchase).</p>
+            <div class="card-actions">
+              <a class="btn" href="https://essayboffin.gumroad.com/l/phouc" target="_blank" rel="noopener">View on Gumroad</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="free" class="section container">
+      <h2>Free Courses</h2>
+      <div class="cards">
+        <article class="card">
+          <a class="card-media" href="https://essayboffin.gumroad.com/l/fnzbmq" target="_blank" rel="noopener">
+            <img src="/assets/free-course.jpg" alt="Free course thumbnail" />
+          </a>
+          <div class="card-body">
+            <h3>Free Course — From Gumroad</h3>
+            <p class="muted">Free access on Gumroad. Click to visit and download.</p>
+            <div class="card-actions">
+              <a class="btn" href="https://essayboffin.gumroad.com/l/fnzbmq" target="_blank" rel="noopener">Open on Gumroad</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="articles" class="section container articles">
+      <h2>Articles & Blog Posts</h2>
+      <div class="coming-soon">
+        <div class="animated-text">Coming Soon</div>
+      </div>
+    </section>
+
+    <section id="books" class="section container books">
+      <h2>Books</h2>
+      <div class="books-banner">
+        <a href="https://freecollegetextbooks.vercel.app/" target="_blank" rel="noopener">
+          <div class="books-banner-inner">
+            <h3>Free College Textbooks</h3>
+            <p>Click to visit the curated free textbooks collection.</p>
+          </div>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>&copy; EssayBoffin — All rights reserved.</p>
+      <p class="muted">Built with a silk modern 3D white style. Accent color is intentionally non-bright for a calm UX.</p>
+    </div>
+  </footer>
+
+  <!-- Overlay modal form for assistance requests -->
+  <div id="assistModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Assistance request form">
+      <button class="modal-close" id="modalClose" title="Close">✕</button>
+      <h3 id="modalTitle">Request Service</h3>
+
+      <div class="contact-methods">
+        <label>
+          <input type="radio" name="contactMethod" value="email" checked>
+          Email
+        </label>
+        <label>
+          <input type="radio" name="contactMethod" value="whatsapp">
+          WhatsApp
+        </label>
+      </div>
+
+      <form id="assistForm" class="assist-form">
+        <input type="hidden" id="serviceType" name="serviceType" value="">
+        <label class="field">
+          <span>Service</span>
+          <input type="text" id="servicePreview" readonly>
+        </label>
+        <label class="field">
+          <span>Name</span>
+          <input type="text" id="name" required>
+        </label>
+        <label class="field">
+          <span>Title / Subject</span>
+          <input type="text" id="subject">
+        </label>
+        <label class="field">
+          <span>Description</span>
+          <textarea id="description" rows="4"></textarea>
+        </label>
+        <label class="field">
+          <span>Additional Info</span>
+          <textarea id="additional" rows="2"></textarea>
+        </label>
+        <label class="field">
+          <span>Contact Info</span>
+          <input type="text" id="contactInfo" placeholder="email address or phone number">
+        </label>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Send Request</button>
+          <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/assets/main.js"></script>
 </body>
 </html>
