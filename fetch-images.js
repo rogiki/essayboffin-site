@@ -1,102 +1,122 @@
-/**
- * fetch-images.js
- *
- * Usage:
- *   npm install node-fetch@2 jimp
- *   node fetch-images.js
- *
- * What it does:
- * - Fetches the Gumroad product pages you provided and tries to extract the OG image (og:image).
- * - Downloads the product thumbnails into ./assets/free-course.jpg and ./assets/premium-course.jpg
- * - Downloads the Twitter profile image and attempts a best-effort background removal by turning near-white pixels transparent, saving as ./assets/logo.png
- *
- * NOTE:
- * - This is a best-effort local approach for background removal (simple threshold-based). For perfect results use a specialized API (remove.bg) or manual editing.
- */
+// Node script to fetch Gumroad OG images and produce a transparent logo.
+// Requires: node-fetch@2, jimp
 const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch');
 const Jimp = require('jimp');
 
-const assetsDir = path.join(__dirname, 'assets');
-if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir, { recursive: true });
+const outDir = path.join(__dirname, 'assets');
+if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
-async function download(url, filepath) {
-  console.log('Downloading', url);
+// Replace these with your actual Gumroad product page URLs
+const gumroadPages = [
+  { name: 'premium-course', url: 'https://gumroad.com/l/REPLACE_PREMIUM' },
+  { name: 'free-course', url: 'https://gumroad.com/l/REPLACE_FREE' }
+];
+
+async function fetchOgImage(pageUrl) {
+  try {
+    const res = await fetch(pageUrl, { redirect: 'follow' });
+    const text = await res.text();
+    const m = text.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)
+             || text.match(/<meta\s+name=["']twitter:image["']\s+content=["']([^"']+)["']/i);
+    return m ? m[1] : null;
+  } catch (e) {
+    console.error('fetchOgImage error', e);
+    return null;
+  }
+}
+
+async function downloadToFile(url, filepath) {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to download ${url}: ${res.status}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
   const buffer = await res.buffer();
   fs.writeFileSync(filepath, buffer);
-  console.log('Saved to', filepath);
+  return filepath;
 }
 
-async function fetchOgImageFromPage(pageUrl) {
-  console.log('Fetching page:', pageUrl);
-  const res = await fetch(pageUrl);
-  if (!res.ok) throw new Error(`Failed to fetch ${pageUrl}`);
-  const text = await res.text();
-  // crude OG image extraction
-  const m = text.match(/<meta property="og:image" content="([^"]+)"/i) || text.match(/<meta name="twitter:image" content="([^"]+)"/i);
-  if (m && m[1]) return m[1];
-  // fallback: look for img srcs referencing gumroadusercontent
-  const m2 = text.match(/https?:\/\/[^\"]*gumroadusercontent[^\"']*\.(?:png|jpg|jpeg)/i);
-  if (m2) return m2[0];
-  throw new Error('OG image not found on page: ' + pageUrl);
-}
+async function makeLogoTransparent(srcPath, dstPath) {
+  const img = await Jimp.read(srcPath);
+  img.rgba(true);
 
-async function makeLogoTransparent(inputPath, outputPath) {
-  const image = await Jimp.read(inputPath);
-  // Convert near-white background to transparent — naive approach
-  image.rgba(true);
-  const threshold = 240; // pixel component value above which we'll consider it background
-  image.scan(0, 0, image.bitmap.width, image.bitmap.height, (x, y, idx) => {
-    const r = image.bitmap.data[idx + 0];
-    const g = image.bitmap.data[idx + 1];
-    const b = image.bitmap.data[idx + 2];
-    const aIdx = idx + 3;
-    // if pixel is near white/light, make it transparent
+  // Heuristic: treat near-white (and near-uniform background) as transparent.
+  // Fine-tune threshold as needed.
+  const threshold = 240; // 0-255: higher => stricter (closer to pure white)
+  img.scan(0, 0, img.bitmap.width, img.bitmap.height, function (x, y, idx) {
+    const r = this.bitmap.data[idx + 0];
+    const g = this.bitmap.data[idx + 1];
+    const b = this.bitmap.data[idx + 2];
+    // If pixel is near-white, make transparent
     if (r >= threshold && g >= threshold && b >= threshold) {
-      image.bitmap.data[aIdx] = 0;
+      this.bitmap.data[idx + 3] = 0;
     }
   });
-  await image.writeAsync(outputPath);
-  console.log('Saved transparent logo to', outputPath);
+
+  // Optional: trim empty borders — simple crop to content bbox
+  const { width, height } = img.bitmap;
+  let minX = width, minY = height, maxX = 0, maxY = 0;
+  img.scan(0, 0, width, height, function (x, y, idx) {
+    if (this.bitmap.data[idx + 3] !== 0) {
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  });
+  if (maxX >= minX && maxY >= minY) {
+    const w = maxX - minX + 1;
+    const h = maxY - minY + 1;
+    const cropped = img.clone().crop(minX, minY, w, h);
+    await cropped.writeAsync(dstPath);
+  } else {
+    // If entire image transparent, just write original
+    await img.writeAsync(dstPath);
+  }
 }
 
 (async () => {
   try {
-    // Gumroad product pages you provided
-    const premiumPage = 'https://essayboffin.gumroad.com/l/phouc';
-    const freePage = 'https://essayboffin.gumroad.com/l/fnzbmq';
-    const twitterLogo = 'https://pbs.twimg.com/profile_images/1957012042600034304/bes8Ve0-_400x400.jpg';
-
-    // Premium
-    try {
-      const premiumImage = await fetchOgImageFromPage(premiumPage);
-      const premPath = path.join(assetsDir, 'premium-course.jpg');
-      await download(premiumImage, premPath);
-    } catch (err) {
-      console.warn('Premium image fetch failed:', err.message);
+    for (const p of gumroadPages) {
+      const og = await fetchOgImage(p.url);
+      if (!og) {
+        console.warn(`No og:image found for ${p.url}`);
+        continue;
+      }
+      const ext = path.extname(og).split('?')[0] || '.jpg';
+      const outPath = path.join(outDir, `${p.name}${ext}`);
+      console.log('Downloading', og, '->', outPath);
+      await downloadToFile(og, outPath);
     }
 
-    // Free
-    try {
-      const freeImage = await fetchOgImageFromPage(freePage);
-      const freePath = path.join(assetsDir, 'free-course.jpg');
-      await download(freeImage, freePath);
-    } catch (err) {
-      console.warn('Free image fetch failed:', err.message);
+    // If you have a logo image on a Gumroad page (or stored elsewhere), set the source:
+    // Option A: use first gumroad asset as logo-original.jpg (if applicable)
+    // Option B: replace logoSourceUrl with a direct URL to your logo
+    const logoSourceUrl = null; // e.g. 'https://example.com/path/to/logo.jpg'
+    const logoOriginalPath = path.join(outDir, 'logo-original.jpg');
+
+    if (logoSourceUrl) {
+      await downloadToFile(logoSourceUrl, logoOriginalPath);
+    } else {
+      // Try to reuse one of the downloaded images as a logo if present
+      const candidate = path.join(outDir, 'premium-course.jpg');
+      if (fs.existsSync(candidate)) {
+        fs.copyFileSync(candidate, logoOriginalPath);
+      } else {
+        console.warn('No logo source available; skipping logo processing.');
+      }
     }
 
-    // Logo: download original and attempt background removal
-    const originalLogoPath = path.join(assetsDir, 'logo-original.jpg');
-    await download(twitterLogo, originalLogoPath);
-    const logoPngPath = path.join(assetsDir, 'logo.png');
-    await makeLogoTransparent(originalLogoPath, logoPngPath);
+    const logoOutPath = path.join(outDir, 'logo.png');
+    if (fs.existsSync(logoOriginalPath)) {
+      console.log('Processing logo to produce transparent PNG ->', logoOutPath);
+      await makeLogoTransparent(logoOriginalPath, logoOutPath);
+    } else {
+      console.warn('logo-original.jpg not found; no logo.png produced.');
+    }
 
-    console.log('Done. Check the assets/ folder for images.');
+    console.log('Done. Generated assets are in', outDir);
   } catch (err) {
-    console.error('Error:', err);
-    process.exit(1);
+    console.error('Error in fetch-images.js:', err);
+    process.exitCode = 1;
   }
 })();
